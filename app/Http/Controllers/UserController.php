@@ -23,62 +23,47 @@ class UserController extends Controller
 
     public function loginAdmin(Request $request)
     {
-        try {
-            $request->validate([
-                'email' => 'email|required',
-                'password' => 'required'
-            ]);
+        $validator = $request->validate([
+            'email' => 'email|required',
+            'password' => 'required'
+        ]);
 
-            $credentials = request(['email', 'password']);
-            if (!Auth::attempt($credentials)) {
-                // return ResponseFormatter::error([
-                //     'message' => 'Unauthorized'
-                // ],'Authentication Failed', 500);
-                throw new \Exception('Invalid Credentials');
-            }
-
-            $user = User::where('email', $request->email)->first();
-            if ( ! Hash::check($request->password, $user->password, [])) {
-                throw new \Exception('Invalid Credentials');
-            }
-
-            $tokenResult = $user->createToken('authToken')->plainTextToken;
-            return redirect()->route('admin-dashboard');
-        } catch (Exception $error) {
-            throw new \Exception('Something went wrong');
+        $credentials = request(['email', 'password']);
+        if (!Auth::attempt($credentials)) {
+            // return ResponseFormatter::error([
+            //     'message' => 'Unauthorized'
+            // ],'Authentication Failed', 500);
+            return redirect('login')->withErrors($validator);
         }
+
+        $user = User::where('email', $request->email)->first();
+        if ( ! Hash::check($request->password, $user->password, [])) {
+            return redirect('login')->withErrors($request);
+        }
+
+        return redirect()->route('admin-dashboard');
     }
 
      public function registerAdmin(Request $request) 
      {
-        try {
-            $request->validate([
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'password' => $this->passwordRules()
-            ]);
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password' => $this->passwordRules()
+        ]);
 
-            $data = $request->all();
+        User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'address' => $request->address,
+            'roles' => 'ADMIN',
+            'houseNumber' => $request->houseNumber,
+            'phoneNumber' => $request->phoneNumber,
+            'city' => $request->city,
+            'password' => Hash::make($request->password),
+        ]);
 
-            User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'address' => $request->address,
-                'roles' => 'ADMIN',
-                'houseNumber' => $request->houseNumber,
-                'phoneNumber' => $request->phoneNumber,
-                'city' => $request->city,
-                'password' => Hash::make($request->password),
-            ]);
-
-            $user = User::where('email', $request->email)->first();
-
-            $tokenResult = $user->createToken('authToken')->plainTextToken;
-
-            return redirect()->route('admin-dashboard');
-        } catch (\Throwable $th) {
-            throw $th;
-        }
+        return redirect()->route('admin-dashboard');
      }
 
      public function logoutAdmin(Request $request)
